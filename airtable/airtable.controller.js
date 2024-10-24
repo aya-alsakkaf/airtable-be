@@ -26,14 +26,28 @@ async function fetchRecords(tableName) {
   }
 }
 
-async function createOrUpdateTaskRecord(studentId, grade, notes, repo, topic) {
+async function createOrUpdateTaskRecord(
+  studentId,
+  grade,
+  notes,
+  repo,
+  topic,
+  studentGitHub
+) {
   try {
     const existingTask = await checkStudentTask(repo);
     if (existingTask) {
       await updateTaskRecord(existingTask.id, grade, notes);
       console.log("Airtable Record Updated Successfully!");
     } else {
-      await createTaskRecord(studentId, grade, notes, repo, topic);
+      await createTaskRecord(
+        studentId,
+        grade,
+        notes,
+        repo,
+        topic,
+        studentGitHub
+      );
       console.log("Airtable Record Created Successfully!");
     }
   } catch (error) {
@@ -42,7 +56,14 @@ async function createOrUpdateTaskRecord(studentId, grade, notes, repo, topic) {
   }
 }
 
-async function createTaskRecord(studentId, grade, notes, repo, topic) {
+async function createTaskRecord(
+  studentId,
+  grade,
+  notes,
+  repo,
+  topic,
+  studentGitHub
+) {
   await airtableApi.post(`/${AIRTABLE_TABLE_NAME}`, {
     fields: {
       Students: [studentId],
@@ -50,6 +71,7 @@ async function createTaskRecord(studentId, grade, notes, repo, topic) {
       Notes: notes,
       Repo: repo,
       Topic: topic,
+      Github: studentGitHub,
     },
   });
 }
@@ -92,7 +114,8 @@ const updateAirTable = async (req, res, next) => {
       grade / 100,
       notes,
       studentRepo,
-      topic
+      topic,
+      studentGitHub
     );
 
     return res.status(200).json({ message: "Airtable updated successfully" });
