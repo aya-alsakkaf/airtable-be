@@ -1,5 +1,5 @@
 const axios = require("axios");
-const dotenv = require("dotenv").config();
+require("dotenv").config();
 const {
   AIRTABLE_API_KEY,
   AIRTABLE_BASE_ID,
@@ -7,6 +7,7 @@ const {
   AIRTABLE_STUDENTS_TABLE_NAME,
 } = process.env;
 
+// Create Airtable API instance
 const airtableApi = axios.create({
   baseURL: `https://api.airtable.com/v0/${AIRTABLE_BASE_ID}`,
   headers: {
@@ -30,10 +31,11 @@ async function createOrUpdateTaskRecord(studentId, grade, notes, repo) {
     const existingTask = await checkStudentTask(repo);
     if (existingTask) {
       await updateTaskRecord(existingTask.id, grade, notes);
+      console.log("Airtable Record Updated Successfully!");
     } else {
       await createTaskRecord(studentId, grade, notes, repo);
+      console.log("Airtable Record Created Successfully!");
     }
-    console.log("Airtable updated successfully!");
   } catch (error) {
     console.error("Error updating Airtable:", error.message);
     throw error;
@@ -59,35 +61,26 @@ async function checkStudentTask(repo) {
 
 const updateAirTable = async (req, res, next) => {
   try {
-    const {
-      passedTests,
-      failedTests,
-      studentGitHub: STUDENT_GITHUB,
-      studentRepo: STUDENT_REPO,
-      grade
-    } = req.body;
+    const { passedTests, failedTests, studentGitHub, studentRepo, grade } =
+      req.body;
     const students = await fetchRecords(AIRTABLE_STUDENTS_TABLE_NAME);
     const student = students.find(
-      (s) => s.fields["GitHub Username"] === STUDENT_GITHUB
+      (s) => s.fields["GitHub Username"] === studentGitHub
     );
 
     if (!student) {
       throw new Error(
-        `Student with GitHub username ${STUDENT_GITHUB} not found`
+        `Student with GitHub username ${studentGitHub} not found`
       );
     }
 
-    await createOrUpdateTaskRecord(
-      student.id,
-      grade / 100,
-      `Passed Tests ${passedTests}, Failed Tests ${failedTests}`,
-      STUDENT_REPO
-    );
+    const notes = `Passed Tests ${passedTests}, Failed Tests ${failedTests}`;
+    await createOrUpdateTaskRecord(student.id, grade / 100, notes, studentRepo);
 
-    return res.status(200).json("data");
+    return res.status(200).json({ message: "Airtable updated successfully" });
   } catch (error) {
-    console.log("Error Updating Airtable", error);
-    next();
+    console.error("Error Updating Airtable:", error);
+    return res.status(500).json({ error: "Internal Server Error" });
   }
 };
 
