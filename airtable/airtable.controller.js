@@ -26,14 +26,14 @@ async function fetchRecords(tableName) {
   }
 }
 
-async function createOrUpdateTaskRecord(studentId, grade, notes, repo) {
+async function createOrUpdateTaskRecord(studentId, grade, notes, repo, topic) {
   try {
     const existingTask = await checkStudentTask(repo);
     if (existingTask) {
       await updateTaskRecord(existingTask.id, grade, notes);
       console.log("Airtable Record Updated Successfully!");
     } else {
-      await createTaskRecord(studentId, grade, notes, repo);
+      await createTaskRecord(studentId, grade, notes, repo, topic);
       console.log("Airtable Record Created Successfully!");
     }
   } catch (error) {
@@ -42,9 +42,15 @@ async function createOrUpdateTaskRecord(studentId, grade, notes, repo) {
   }
 }
 
-async function createTaskRecord(studentId, grade, notes, repo) {
+async function createTaskRecord(studentId, grade, notes, repo, topic) {
   await airtableApi.post(`/${AIRTABLE_TABLE_NAME}`, {
-    fields: { Students: [studentId], Grade: grade, Notes: notes, Repo: repo },
+    fields: {
+      Students: [studentId],
+      Grade: grade,
+      Notes: notes,
+      Repo: repo,
+      Topic: topic,
+    },
   });
 }
 
@@ -61,8 +67,14 @@ async function checkStudentTask(repo) {
 
 const updateAirTable = async (req, res, next) => {
   try {
-    const { passedTests, failedTests, studentGitHub, studentRepo, grade } =
-      req.body;
+    const {
+      passedTests,
+      failedTests,
+      studentGitHub,
+      studentRepo,
+      grade,
+      topic,
+    } = req.body;
     const students = await fetchRecords(AIRTABLE_STUDENTS_TABLE_NAME);
     const student = students.find(
       (s) => s.fields["GitHub Username"] === studentGitHub
@@ -75,7 +87,13 @@ const updateAirTable = async (req, res, next) => {
     }
 
     const notes = `Passed Tests ${passedTests}, Failed Tests ${failedTests}`;
-    await createOrUpdateTaskRecord(student.id, grade / 100, notes, studentRepo);
+    await createOrUpdateTaskRecord(
+      student.id,
+      grade / 100,
+      notes,
+      studentRepo,
+      topic
+    );
 
     return res.status(200).json({ message: "Airtable updated successfully" });
   } catch (error) {
